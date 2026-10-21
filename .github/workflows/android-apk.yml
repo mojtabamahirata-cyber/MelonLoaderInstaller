@@ -1,0 +1,64 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix-local-melon-data-android
+    paths:
+      - 'App/**'
+      - 'Core/**'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: '17'
+
+      - name: Install MAUI Android workload
+        run: dotnet workload install maui-android
+
+      - name: Create temporary signing key
+        env:
+          LEMON_KEYSTORE_PASS: temporary-${{ github.run_id }}-${{ github.run_attempt }}-Aa9!
+        run: |
+          keytool -genkeypair -v \
+            -keystore App/meloninstaller.keystore \
+            -storepass "$LEMON_KEYSTORE_PASS" \
+            -keypass "$LEMON_KEYSTORE_PASS" \
+            -alias melon \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Temporary Test, O=Android Build, C=IQ"
+
+      - name: Build Release APK
+        env:
+          LEMON_KEYSTORE_PASS: temporary-${{ github.run_id }}-${{ github.run_attempt }}-Aa9!
+        run: |
+          dotnet publish App/MelonLoader.Installer.App.csproj \
+            --configuration Release \
+            --framework net8.0-android \
+            -p:AndroidPackageFormat=apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MelonLoader-Installer-APK
+          path: App/bin/Release/net8.0-android/publish/*.apk
+          if-no-files-found: error
+          retention-days: 7

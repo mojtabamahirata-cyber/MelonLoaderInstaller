@@ -204,7 +204,6 @@ public static class PatchRunner
 
     private static async Task<bool> DownloadMelonData(string destination)
     {
-#if DEBUG
         if (File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "melon_data/melon_data.zip")))
         {
             _logger?.Log("Using local melon data");
@@ -220,7 +219,6 @@ public static class PatchRunner
             File.Copy(@"/sdcard/Download/melon_data.zip", destination);
             return true;
         }
-#endif
 
         _logger?.Log("Retrieving release info from GitHub");
 
